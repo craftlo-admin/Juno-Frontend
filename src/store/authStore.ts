@@ -90,11 +90,6 @@ export const useAuthStore = create<AuthState>()(
         try {
           const apiUrl = getApiUrl();
           
-          // Validate all required fields
-          if (!email || !password || !firstName || !lastName) {
-            throw new Error('All fields are required');
-          }
-          
           const requestBody = {
             email: email.trim(),
             password,
@@ -117,16 +112,12 @@ export const useAuthStore = create<AuthState>()(
             body: JSON.stringify(requestBody),
           });
 
-          console.log('Registration response status:', response.status);
-
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: 'Registration failed' }));
-            console.error('Registration error response:', errorData);
             throw new Error(errorData.message || 'Registration failed');
           }
 
           const data = await response.json();
-          console.log('Registration successful:', data);
           
           set({ isLoading: false, error: null });
           return data;
@@ -147,8 +138,6 @@ export const useAuthStore = create<AuthState>()(
         try {
           const apiUrl = getApiUrl();
           
-          console.log('Sending OTP to:', data.email, 'type:', data.type);
-          
           const response = await fetch(`${apiUrl}/auth/send-otp`, {
             method: 'POST',
             headers: {
@@ -157,13 +146,9 @@ export const useAuthStore = create<AuthState>()(
             body: JSON.stringify(data),
           });
 
-          console.log('Send OTP response status:', response.status);
-
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: 'Failed to send verification code' }));
-            console.error('Send OTP error response:', errorData);
             
-            // Handle rate limiting
             if (response.status === 429) {
               const retryAfter = response.headers.get('Retry-After');
               throw {
@@ -180,7 +165,6 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const result = await response.json();
-          console.log('OTP sent successfully:', result);
           set({ isLoading: false, error: null });
           return result;
         } catch (error: any) {
@@ -198,8 +182,6 @@ export const useAuthStore = create<AuthState>()(
         try {
           const apiUrl = getApiUrl();
           
-          console.log('Verifying OTP for:', data.email, 'OTP:', data.otp, 'type:', data.type);
-          
           const response = await fetch(`${apiUrl}/auth/verify-otp`, {
             method: 'POST',
             headers: {
@@ -208,13 +190,9 @@ export const useAuthStore = create<AuthState>()(
             body: JSON.stringify(data),
           });
 
-          console.log('Verify OTP response status:', response.status);
-
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: 'Verification failed' }));
-            console.error('Verify OTP error response:', errorData);
             
-            // Handle rate limiting
             if (response.status === 429) {
               const retryAfter = response.headers.get('Retry-After');
               throw {
@@ -235,7 +213,6 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const result = await response.json();
-          console.log('OTP verification successful:', result);
           
           // If verification successful and token provided, authenticate user
           if (result.token) {
@@ -270,8 +247,6 @@ export const useAuthStore = create<AuthState>()(
         try {
           const apiUrl = getApiUrl();
           
-          console.log('Resending OTP to:', data.email, 'type:', data.type);
-          
           const response = await fetch(`${apiUrl}/auth/resend-otp`, {
             method: 'POST',
             headers: {
@@ -280,13 +255,9 @@ export const useAuthStore = create<AuthState>()(
             body: JSON.stringify(data),
           });
 
-          console.log('Resend OTP response status:', response.status);
-
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: 'Failed to resend code' }));
-            console.error('Resend OTP error response:', errorData);
             
-            // Handle rate limiting
             if (response.status === 429) {
               const retryAfter = response.headers.get('Retry-After');
               throw {
@@ -303,7 +274,6 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const result = await response.json();
-          console.log('OTP resent successfully:', result);
           set({ isLoading: false });
           return result;
         } catch (error: any) {
@@ -336,6 +306,7 @@ export const useAuthStore = create<AuthState>()(
         
         const token = localStorage.getItem('auth_token');
         if (!token) {
+          console.log('No token found during profile refresh');
           set({
             user: null,
             isAuthenticated: false,
@@ -347,6 +318,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           const apiUrl = getApiUrl();
           
+          console.log('Refreshing profile with token:', token.substring(0, 10) + '...');
+          
           const response = await fetch(`${apiUrl}/auth/me`, {
             method: 'GET',
             headers: {
@@ -356,8 +329,11 @@ export const useAuthStore = create<AuthState>()(
             cache: 'no-store',
           });
 
+          console.log('Profile refresh response status:', response.status);
+
           if (!response.ok) {
             if (response.status === 401) {
+              console.log('Token expired or invalid, logging out');
               get().logout();
               return;
             }
@@ -365,6 +341,8 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const data = await response.json();
+          console.log('Profile refreshed successfully:', data.user.email);
+          
           set({
             user: data.user,
             isAuthenticated: true,
@@ -386,7 +364,10 @@ export const useAuthStore = create<AuthState>()(
         
         try {
           const token = localStorage.getItem('auth_token');
+          console.log('Initializing auth, token found:', !!token);
+          
           if (!token) {
+            console.log('No token found, user not authenticated');
             set({
               user: null,
               isAuthenticated: false,
@@ -395,6 +376,7 @@ export const useAuthStore = create<AuthState>()(
             return;
           }
 
+          console.log('Token found, refreshing profile...');
           await get().refreshProfile();
         } catch (error: any) {
           console.error('Auth initialization error:', error);

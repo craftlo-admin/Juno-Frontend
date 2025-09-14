@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/components/auth-provider";
+import { AuthProvider } from "@/components/providers/auth-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Website Builder",
-  description: "Build and deploy websites easily",
+  description: "Build websites with ease",
 };
 
 export default function RootLayout({

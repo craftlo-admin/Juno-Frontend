@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -10,7 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuthStore } from '@/store/authStore';
+import { AlertTriangle, Eye, EyeOff } from 'lucide-react';
 
 // Login form schema
 const loginSchema = z.object({
@@ -23,8 +25,9 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState<string>('');
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const { login } = useAuthStore();
+  const { login, isAuthenticated } = useAuthStore();
 
   const {
     register,
@@ -34,20 +37,23 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push('/workspace');
+    }
+  }, [isAuthenticated, router]);
+
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setServerError('');
     
     try {
       await login(data.email, data.password);
-
-      // Check for redirect parameter, default to workspace instead of dashboard
-      const searchParams = new URLSearchParams(window.location.search);
-      const redirectTo = searchParams.get('redirect') || '/workspace'; // Changed from '/dashboard'
-      
-      router.push(redirectTo);
+      router.push('/workspace');
     } catch (error: any) {
-      setServerError(error.userMessage || error.message || 'Login failed. Please try again.');
+      console.error('Login error:', error);
+      setServerError(error.message || 'Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -63,19 +69,20 @@ export default function LoginPage() {
 
         <Card className="border-gray-700 bg-gray-800">
           <CardHeader>
-            <CardTitle className="text-white">Sign In</CardTitle>
+            <CardTitle className="text-white">Welcome back</CardTitle>
             <CardDescription className="text-gray-300">
-              Enter your credentials to access your dashboard
+              Enter your credentials to access your workspace
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {serverError && (
-                <div className="bg-red-900/50 border border-red-700 rounded-md p-3">
-                  <p className="text-sm text-red-200">{serverError}</p>
-                </div>
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{serverError}</AlertDescription>
+                </Alert>
               )}
-              
+
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-gray-200">Email</Label>
                 <Input
@@ -84,6 +91,7 @@ export default function LoginPage() {
                   {...register('email')}
                   placeholder="john@company.com"
                   className={`bg-gray-700 border-gray-600 text-white placeholder-gray-400 ${errors.email ? 'border-red-500' : ''}`}
+                  disabled={isLoading}
                 />
                 {errors.email && (
                   <p className="text-sm text-red-400">{errors.email.message}</p>
@@ -92,16 +100,54 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-gray-200">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  {...register('password')}
-                  placeholder="Enter your password"
-                  className={`bg-gray-700 border-gray-600 text-white placeholder-gray-400 ${errors.password ? 'border-red-500' : ''}`}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    {...register('password')}
+                    placeholder="Enter your password"
+                    className={`bg-gray-700 border-gray-600 text-white placeholder-gray-400 pr-10 ${errors.password ? 'border-red-500' : ''}`}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300"
+                    disabled={isLoading}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
                 {errors.password && (
                   <p className="text-sm text-red-400">{errors.password.message}</p>
                 )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-600 bg-gray-700 rounded"
+                  />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-300">
+                    Remember me
+                  </label>
+                </div>
+
+                <div className="text-sm">
+                  <Link
+                    href="/forgot-password"
+                    className="text-blue-400 hover:text-blue-300 hover:underline"
+                  >
+                    Forgot your password?
+                  </Link>
+                </div>
               </div>
 
               <Button
@@ -109,7 +155,7 @@ export default function LoginPage() {
                 className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={isLoading}
               >
-                {isLoading ? 'Signing in...' : 'Sign In'}
+                {isLoading ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
 
@@ -120,7 +166,7 @@ export default function LoginPage() {
                   href="/register"
                   className="text-blue-400 hover:text-blue-300 hover:underline font-medium"
                 >
-                  Create an account
+                  Sign up
                 </Link>
               </p>
             </div>
