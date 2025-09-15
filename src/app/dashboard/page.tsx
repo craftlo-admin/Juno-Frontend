@@ -23,7 +23,7 @@ export default function DashboardPage() {
   
   return (
     <div className="space-y-6">
-      <div className="border-b border-gray-700 pb-4">
+      {/* <div className="border-b border-gray-700 pb-4">
         <h1 className="text-2xl font-bold text-white">
           Welcome back, {user?.firstName || 'there'}!
         </h1>
@@ -101,7 +101,8 @@ export default function DashboardPage() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
+      Hello
     </div>
   );
 }
