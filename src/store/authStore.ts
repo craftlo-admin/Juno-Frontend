@@ -66,7 +66,14 @@ export const useAuthStore = create<AuthState>()(
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: 'Login failed' }));
-            throw new Error(errorData.message || 'Login failed');
+            const errorMessage = errorData.error || errorData.message || 'Login failed';
+            
+            // Create an error object with response status for better handling
+            const authError = new Error(errorMessage);
+            (authError as any).status = response.status;
+            (authError as any).isAuthError = true;
+            
+            throw authError;
           }
 
           const data = await response.json();
@@ -87,35 +94,53 @@ export const useAuthStore = create<AuthState>()(
         } catch (error: any) {
           console.error('Login error:', error);
           
-          // Mock authentication fallback when API is not available
-          if (email && password) {
-            console.log('API not available, using mock authentication');
-            const mockData = {
-              token: 'mock-jwt-token-' + Date.now(),
-              user: {
-                id: 'mock-user-id',
-                email: email,
-                firstName: 'Mock',
-                lastName: 'User',
-                emailVerified: true
-              }
-            };
-            
-            // Store token in localStorage and cookie
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('auth_token', mockData.token);
-              document.cookie = `auth_token=${mockData.token}; path=/; max-age=${7 * 24 * 60 * 60}; secure; samesite=strict`;
-            }
-            
+          // Check if this is an authentication error from the API
+          if (error.isAuthError && error.status >= 400 && error.status < 500) {
+            // This is a client error (401, 400, etc.) - show to user
+            console.log('Authentication error from API:', error.message);
             set({
-              user: mockData.user,
-              isAuthenticated: true,
+              user: null,
+              isAuthenticated: false,
               isLoading: false,
-              error: null,
+              error: error.message,
             });
-            return;
+            throw error;
           }
           
+          // Check if this is a network error (API not available)
+          if (error.name === 'TypeError' || error.message.includes('fetch')) {
+            console.log('Network error detected, API likely not available');
+            // Only use mock authentication for network errors
+            if (email && password) {
+              console.log('Using mock authentication fallback');
+              const mockData = {
+                token: 'mock-jwt-token-' + Date.now(),
+                user: {
+                  id: 'mock-user-id',
+                  email: email,
+                  firstName: 'Mock',
+                  lastName: 'User',
+                  emailVerified: true
+                }
+              };
+              
+              // Store token in localStorage and cookie
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('auth_token', mockData.token);
+                document.cookie = `auth_token=${mockData.token}; path=/; max-age=${7 * 24 * 60 * 60}; secure; samesite=strict`;
+              }
+              
+              set({
+                user: mockData.user,
+                isAuthenticated: true,
+                isLoading: false,
+                error: null,
+              });
+              return;
+            }
+          }
+          
+          // For any other errors, show them to the user
           set({
             user: null,
             isAuthenticated: false,
@@ -314,16 +339,17 @@ export const useAuthStore = create<AuthState>()(
           return;
         }
 
-        // Handle mock tokens
+        // Handle mock tokens - don't make API calls
         if (token.startsWith('mock-jwt-token-')) {
           console.log('Mock token detected during profile refresh, skipping API call');
           return;
         }
 
+        // For real tokens, validate with the API
         try {
           const apiUrl = getApiUrl();
           
-          console.log('Refreshing profile with token:', token.substring(0, 10) + '...');
+          console.log('Refreshing profile with real token:', token.substring(0, 10) + '...');
           
           const response = await fetch(`${apiUrl}/auth/me`, {
             method: 'GET',
@@ -347,12 +373,13 @@ export const useAuthStore = create<AuthState>()(
 
           const data = await response.json();
           
-          // Validate response structure before accessing nested properties
-          if (data && data.user && data.user.email) {
-            console.log('Profile refreshed successfully:', data.user.email);
+          // Validate response structure - API returns data nested under 'data' property
+          if (data && data.data && data.data.user && data.data.user.email) {
+            console.log('Profile refreshed successfully:', data.data.user.email);
             
             set({
-              user: data.user,
+              user: data.data.user,
+              tenants: data.data.tenants || null,
               isAuthenticated: true,
               error: null,
             });
@@ -362,9 +389,7 @@ export const useAuthStore = create<AuthState>()(
           }
         } catch (error: any) {
           console.error('Profile refresh error:', error);
-          console.log('API not available, keeping current auth state if token exists');
-          // Don't logout if API is not available - just log the error
-          // This prevents logout when backend is down but user has valid token
+          throw error; // Re-throw the error so initializeAuth can handle it
         }
       },
 
@@ -379,6 +404,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           const token = localStorage.getItem('auth_token');
           console.log('Initializing auth, token found:', !!token);
+          console.log('Token value:', token ? token.substring(0, 20) + '...' : 'null');
           
           if (!token) {
             console.log('No token found, user not authenticated');
@@ -393,7 +419,10 @@ export const useAuthStore = create<AuthState>()(
           // Check if this is a mock token
           if (token.startsWith('mock-jwt-token-')) {
             console.log('Mock token found, setting up mock authentication');
-            const mockUser = {
+            
+            // Try to get user data from persisted state first
+            const persistedUser = get().user;
+            const mockUser = persistedUser || {
               id: 'mock-user-id',
               email: 'user@example.com',
               firstName: 'Mock',
@@ -410,8 +439,25 @@ export const useAuthStore = create<AuthState>()(
             return;
           }
 
-          console.log('Real token found, refreshing profile...');
-          await get().refreshProfile();
+          console.log('Real token found, attempting to validate with API...');
+          
+          // Try to validate the real token with the API
+          try {
+            await get().refreshProfile();
+            console.log('Real token validated successfully');
+          } catch (profileError: any) {
+            console.log('Failed to validate real token, clearing and requiring new login...');
+            // Clear the token since we can't validate it
+            localStorage.removeItem('auth_token');
+            document.cookie = 'auth_token=; path=/; max-age=0';
+            
+            set({
+              user: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+            });
+          }
         } catch (error: any) {
           console.error('Auth initialization error:', error);
           set({
