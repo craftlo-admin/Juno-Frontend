@@ -26,55 +26,38 @@ interface WorkspaceLayoutProps {
 export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const router = useRouter();
   const { user, logout, isAuthenticated, isLoading, initializeAuth } = useAuthStore();
-  const [mounted, setMounted] = useState(false);
-  const [authInitialized, setAuthInitialized] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
-  // Handle client-side mounting
+  // Initialize auth immediately when component mounts
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Debug localStorage
-  useEffect(() => {
-    if (!mounted) return;
+    console.log('Workspace layout mounted, initializing auth...');
     
-    console.log('=== DEBUG localStorage ===');
-    console.log('auth_token:', localStorage.getItem('auth_token'));
-    console.log('All localStorage keys:', Object.keys(localStorage));
-    console.log('Document cookies:', document.cookie);
-    console.log('========================');
-  }, [mounted]);
-
-  // Initialize auth only after component is mounted
-  useEffect(() => {
-    if (!mounted || authInitialized) return;
-
-    console.log('Starting auth initialization...');
-    const initialize = async () => {
+    const initAuth = async () => {
       try {
         await initializeAuth();
         console.log('Auth initialization complete');
       } catch (error) {
         console.error('Failed to initialize auth:', error);
       } finally {
-        setAuthInitialized(true);
+        setAuthChecked(true);
       }
     };
 
-    initialize();
-  }, [mounted, authInitialized, initializeAuth]);
+    initAuth();
+  }, [initializeAuth]);
 
-  // Handle redirect logic after auth is initialized
+  // Handle redirect logic after auth is checked
   useEffect(() => {
-    if (!mounted || !authInitialized || isLoading) {
-      console.log('Waiting for auth...', { mounted, authInitialized, isLoading });
+    if (!authChecked || isLoading) {
+      console.log('Waiting for auth check...', { authChecked, isLoading });
       return;
     }
 
     console.log('Auth state:', {
       isAuthenticated,
       hasUser: !!user,
-      userEmail: user?.email
+      userEmail: user?.email,
+      token: typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
     });
 
     // Check if token exists in localStorage
@@ -85,20 +68,15 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     if (!token || !isAuthenticated || !user) {
       console.log('No valid auth found, redirecting to login...');
       // Force redirect to login page
-      window.location.href = 'http://localhost:3000/login';
+      router.push('/login');
       return;
     }
 
     console.log('User is authenticated, showing workspace');
-  }, [mounted, authInitialized, isAuthenticated, isLoading, user]);
+  }, [authChecked, isAuthenticated, isLoading, user]);
 
-  // Don't render anything until mounted
-  if (!mounted) {
-    return null;
-  }
-
-  // Show loading screen while auth is being initialized or while loading
-  if (!authInitialized || isLoading) {
+  // Show loading screen while auth is being checked or while loading
+  if (!authChecked || isLoading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white text-center">
@@ -124,7 +102,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           </div>
           <div className="mt-4">
             <button 
-              onClick={() => window.location.href = 'http://localhost:3000/login'} 
+              onClick={() => router.push('/login')} 
               className="text-blue-400 hover:underline bg-blue-600 px-4 py-2 rounded"
             >
               Go to Login
@@ -137,7 +115,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
   const handleLogout = () => {
     logout();
-    window.location.href = 'http://localhost:3000/login';
+    router.push('/login');
   };
 
   return (

@@ -11,7 +11,7 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children, fallback }: AuthGuardProps) {
   const router = useRouter();
-  const { isAuthenticated, isLoading, user, token } = useAuthStore();
+  const { isAuthenticated, isLoading, user } = useAuthStore();
 
   useEffect(() => {
     // If not loading and not authenticated, redirect to login
@@ -21,16 +21,16 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
       return;
     }
 
-    // If token exists but no user, try to refresh profile
-    if (token && !user && !isLoading) {
-      console.log('AuthGuard: Have token but no user, refreshing profile');
+    // If authenticated but no user, try to refresh profile
+    if (isAuthenticated && !user && !isLoading) {
+      console.log('AuthGuard: Authenticated but no user, refreshing profile');
       useAuthStore.getState().refreshProfile().catch(() => {
         console.log('AuthGuard: Profile refresh failed, logging out');
         useAuthStore.getState().logout();
         router.push('/login');
       });
     }
-  }, [isAuthenticated, isLoading, user, token, router]);
+  }, [isAuthenticated, isLoading, user, router]);
 
   // Show loading state
   if (isLoading) {

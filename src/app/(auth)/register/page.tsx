@@ -44,7 +44,7 @@ export default function RegisterPage() {
   const requestInProgress = useRef(false);
   
   const router = useRouter();
-  const { register: registerUser, sendOTP, verifyOTP, resendOTP } = useAuthStore();
+  const { register: registerUser, verifyOTP, resendOTP } = useAuthStore();
 
   const {
     register,
@@ -101,19 +101,9 @@ export default function RegisterPage() {
       
       // Check if registration was successful and requires verification
       if (registerResult?.requiresVerification !== false) {
-        // Only send OTP if not already sent
-        if (!otpSent) {
-          try {
-            console.log('Sending OTP to:', data.email);
-            await sendOTP({ email: data.email, type: 'registration' });
-            setOtpSent(true);
-            setSuccessMessage('Registration successful! Please check your email for the 6-digit verification code.');
-          } catch (otpError: any) {
-            console.error('Failed to send OTP:', otpError);
-            setServerError('Registration successful, but failed to send verification code. You can request a new one below.');
-          }
-        }
-        
+        // Registration API already sends OTP automatically
+        setOtpSent(true);
+        setSuccessMessage('Registration successful! Please check your email for the 6-digit verification code.');
         setRegisteredEmail(data.email);
         setShowOTPVerification(true);
         setResendCooldown(60);

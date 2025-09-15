@@ -135,9 +135,34 @@ export interface Project {
 export interface Deployment {
   id: string;
   projectId: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  environment: 'development' | 'staging' | 'production';
+  status: 'pending' | 'failed' | 'building' | 'deployed' | 'cancelled';
+  version: string;
+  commitHash?: string;
+  buildLog?: string;
+  deployedAt?: string;
   createdAt: string;
-  completedAt?: string;
-  logs?: string[];
+  updatedAt: string;
+  url?: string;
+  size?: number;
+  buildTime?: number;
+  error?: string;
+}
+
+export interface CreateDeploymentRequest {
+  projectId: string;
+  version?: string;
+  commitHash?: string;
+}
+
+export interface CreateProjectRequest {
+  name: string;
+  description?: string;
+  url?: string;
+}
+
+export interface UpdateProjectRequest {
+  name?: string;
+  description?: string;
+  url?: string;
+  status?: 'active' | 'inactive' | 'pending';
 }

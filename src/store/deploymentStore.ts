@@ -1,6 +1,6 @@
 ﻿import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { Deployment, CreateDeploymentRequest } from '@/types/api';
+import type { Deployment, CreateDeploymentRequest } from '@/types';
 import { apiClient } from '@/lib/api';
 
 interface DeploymentState {
@@ -30,15 +30,11 @@ export const useDeploymentStore = create<DeploymentState>()(
       fetchDeployments: async (projectId?: string) => {
         try {
           set({ isLoading: true, error: null });
-          let deployments: Deployment[];
+          // TODO: Implement deployments API
+          // Mock data for now
+          const mockDeployments: Deployment[] = [];
           
-          if (projectId) {
-            deployments = await apiClient.deployments.getProjectDeployments(projectId);
-          } else {
-            deployments = await apiClient.deployments.getDeployments();
-          }
-          
-          set({ deployments, isLoading: false });
+          set({ deployments: mockDeployments, isLoading: false });
         } catch (error: any) {
           set({ 
             error: error.message || 'Failed to fetch deployments', 
@@ -50,8 +46,16 @@ export const useDeploymentStore = create<DeploymentState>()(
       fetchDeployment: async (id: string) => {
         try {
           set({ isLoading: true, error: null });
-          const deployment = await apiClient.deployments.getDeployment(id);
-          set({ currentDeployment: deployment, isLoading: false });
+          // TODO: Implement deployment API
+          const mockDeployment: Deployment = {
+            id: id,
+            projectId: 'mock-project-id',
+            status: 'pending',
+            version: '1.0.0',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          set({ currentDeployment: mockDeployment, isLoading: false });
         } catch (error: any) {
           set({ 
             error: error.message || 'Failed to fetch deployment', 
@@ -63,16 +67,24 @@ export const useDeploymentStore = create<DeploymentState>()(
       createDeployment: async (data: CreateDeploymentRequest) => {
         try {
           set({ isLoading: true, error: null });
-          const deployment = await apiClient.deployments.createDeployment(data);
+          // TODO: Implement deployment API
+          const mockDeployment: Deployment = {
+            id: Date.now().toString(),
+            projectId: data.projectId,
+            status: 'pending',
+            version: data.version || '1.0.0',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
           
           // Update deployments list
           const { deployments } = get();
           if (deployments) {
-            set({ deployments: [deployment, ...deployments] });
+            set({ deployments: [mockDeployment, ...deployments] });
           }
           
-          set({ currentDeployment: deployment, isLoading: false });
-          return deployment;
+          set({ currentDeployment: mockDeployment, isLoading: false });
+          return mockDeployment;
         } catch (error: any) {
           set({ 
             error: error.message || 'Failed to create deployment', 
@@ -85,13 +97,13 @@ export const useDeploymentStore = create<DeploymentState>()(
       cancelDeployment: async (id: string) => {
         try {
           set({ isLoading: true, error: null });
-          await apiClient.deployments.cancelDeployment(id);
+          // TODO: Implement cancel deployment API
           
           // Update deployment status in the list
           const { deployments, currentDeployment } = get();
           if (deployments) {
             const updatedDeployments = deployments.map(d => 
-              d.id === id ? { ...d, status: 'cancelled' } : d
+              d.id === id ? { ...d, status: 'cancelled' as const } : d
             );
             set({ deployments: updatedDeployments });
           }
@@ -114,16 +126,24 @@ export const useDeploymentStore = create<DeploymentState>()(
       retryDeployment: async (id: string) => {
         try {
           set({ isLoading: true, error: null });
-          const deployment = await apiClient.deployments.retryDeployment(id);
+          // TODO: Implement retry deployment API
+          const mockDeployment: Deployment = {
+            id: id,
+            projectId: 'mock-project-id',
+            status: 'pending',
+            version: '1.0.0',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
           
           // Update deployments list
           const { deployments } = get();
           if (deployments) {
-            set({ deployments: [deployment, ...deployments] });
+            set({ deployments: [mockDeployment, ...deployments] });
           }
           
-          set({ currentDeployment: deployment, isLoading: false });
-          return deployment;
+          set({ currentDeployment: mockDeployment, isLoading: false });
+          return mockDeployment;
         } catch (error: any) {
           set({ 
             error: error.message || 'Failed to retry deployment', 

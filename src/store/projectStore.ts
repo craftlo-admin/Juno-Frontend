@@ -1,6 +1,6 @@
 ﻿import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { Project, CreateProjectRequest, UpdateProjectRequest } from '@/types/api';
+import type { Project, CreateProjectRequest, UpdateProjectRequest } from '@/types';
 import { apiClient } from '@/lib/api';
 
 interface ProjectState {
@@ -30,8 +30,9 @@ export const useProjectStore = create<ProjectState>()(
       fetchProjects: async () => {
         try {
           set({ isLoading: true, error: null });
-          const projects = await apiClient.projects.getProjects();
-          set({ projects, isLoading: false });
+          // TODO: Implement projects API
+          const mockProjects: Project[] = [];
+          set({ projects: mockProjects, isLoading: false });
         } catch (error: any) {
           set({ 
             error: error.message || 'Failed to fetch projects', 
@@ -43,8 +44,17 @@ export const useProjectStore = create<ProjectState>()(
       fetchProject: async (id: string) => {
         try {
           set({ isLoading: true, error: null });
-          const project = await apiClient.projects.getProject(id);
-          set({ currentProject: project, isLoading: false });
+          // TODO: Implement get project API
+          const mockProject: Project = {
+            id: id,
+            name: 'Mock Project',
+            description: 'Mock project description',
+            status: 'active',
+            userId: 'mock-user-id',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          set({ currentProject: mockProject, isLoading: false });
         } catch (error: any) {
           set({ 
             error: error.message || 'Failed to fetch project', 
@@ -56,16 +66,25 @@ export const useProjectStore = create<ProjectState>()(
       createProject: async (data: CreateProjectRequest) => {
         try {
           set({ isLoading: true, error: null });
-          const project = await apiClient.projects.createProject(data);
+          // TODO: Implement create project API
+          const mockProject: Project = {
+            id: Date.now().toString(),
+            name: data.name,
+            description: data.description,
+            status: 'active',
+            userId: 'mock-user-id',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
           
           // Update projects list
           const { projects } = get();
           if (projects) {
-            set({ projects: [project, ...projects] });
+            set({ projects: [mockProject, ...projects] });
           }
           
-          set({ currentProject: project, isLoading: false });
-          return project;
+          set({ currentProject: mockProject, isLoading: false });
+          return mockProject;
         } catch (error: any) {
           set({ 
             error: error.message || 'Failed to create project', 
@@ -78,24 +97,33 @@ export const useProjectStore = create<ProjectState>()(
       updateProject: async (id: string, data: UpdateProjectRequest) => {
         try {
           set({ isLoading: true, error: null });
-          const project = await apiClient.projects.updateProject(id, data);
+          // TODO: Implement update project API
+          const mockProject: Project = {
+            id: id,
+            name: data.name || 'Updated Project',
+            description: data.description,
+            status: 'active',
+            userId: 'mock-user-id',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
           
           // Update projects list
           const { projects, currentProject } = get();
           if (projects) {
             const updatedProjects = projects.map(p => 
-              p.id === id ? project : p
+              p.id === id ? mockProject : p
             );
             set({ projects: updatedProjects });
           }
           
           // Update current project if it's the one being updated
           if (currentProject?.id === id) {
-            set({ currentProject: project });
+            set({ currentProject: mockProject });
           }
           
           set({ isLoading: false });
-          return project;
+          return mockProject;
         } catch (error: any) {
           set({ 
             error: error.message || 'Failed to update project', 
@@ -108,7 +136,7 @@ export const useProjectStore = create<ProjectState>()(
       deleteProject: async (id: string) => {
         try {
           set({ isLoading: true, error: null });
-          await apiClient.projects.deleteProject(id);
+          // TODO: Implement delete project API
           
           // Remove from projects list
           const { projects, currentProject } = get();

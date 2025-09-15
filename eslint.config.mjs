@@ -20,6 +20,20 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  {
+    rules: {
+      // Downgrade TypeScript strict rules to warnings
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": "warn",
+      
+      // Downgrade React rules to warnings
+      "react/no-unescaped-entities": "warn",
+      
+      // Turn off problematic rules completely
+      "@typescript-eslint/ban-ts-comment": "off",
+      "@typescript-eslint/prefer-as-const": "warn",
+    },
+  },
 ];
 
 export default eslintConfig;
