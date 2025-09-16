@@ -23,6 +23,7 @@ interface UploadedFile {
   status: 'uploading' | 'completed' | 'failed';
   progress?: number;
   url?: string;
+  buildId?: string;
 }
 
 export default function WorkspacePage() {
@@ -42,15 +43,8 @@ export default function WorkspacePage() {
     if (!file) return;
 
     // Validate file type
-    if (!file.name.toLowerCase().endsWith('.zip')) {
-      setError('Please select a ZIP file containing your website.');
-      return;
-    }
-
-    // Validate file size (max 100MB)
-    const maxSize = 100 * 1024 * 1024; // 100MB
-    if (file.size > maxSize) {
-      setError('File size must be less than 100MB.');
+    if (!file.name.toLowerCase().endsWith('.rar')) {
+      setError('Please select a RAR file containing your website.');
       return;
     }
 
@@ -90,10 +84,9 @@ export default function WorkspacePage() {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      // Get API URL
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = 'http://localhost:8000';
 
-      const response = await fetch(`${apiUrl}/api/uploads`, {
+      const response = await fetch(`${apiUrl}/api/builds/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -102,30 +95,65 @@ export default function WorkspacePage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
-        throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+        const errorData = await response.json().catch(() => ({ 
+          success: false, 
+          error: 'Unknown error', 
+          message: 'Upload failed' 
+        }));
+        
+        // Handle specific error cases
+        let errorMessage = errorData.message || 'Upload failed';
+        
+        switch (response.status) {
+          case 400:
+            errorMessage = errorData.message || 'Invalid file type. Only RAR files are allowed.';
+            break;
+          case 401:
+            errorMessage = errorData.message || 'Authentication required. Please log in again.';
+            break;
+          case 404:
+            errorMessage = errorData.message || 'No active tenant found. Please contact support.';
+            break;
+          case 413:
+            errorMessage = errorData.message || 'File size exceeds maximum limit.';
+            break;
+          case 500:
+            errorMessage = errorData.message || 'Build processing failed. Please try again.';
+            break;
+          default:
+            errorMessage = errorData.message || `Upload failed with status ${response.status}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
-      console.log('Upload successful:', result);
+      console.log('Build upload successful:', result);
 
-      // Add to uploaded files list
-      const newFile: UploadedFile = {
-        id: result.id || Date.now().toString(),
-        name: selectedFile.name,
-        size: selectedFile.size,
-        uploadedAt: new Date().toISOString(),
-        status: 'completed',
-        url: result.url,
-      };
+      // Handle successful response
+      if (result.success && result.data && result.data.build) {
+        const build = result.data.build;
+        
+        // Add to uploaded files list with build information
+        const newFile: UploadedFile = {
+          id: build.id,
+          name: selectedFile.name,
+          size: selectedFile.size,
+          uploadedAt: build.createdAt,
+          status: 'completed',
+          url: undefined, // Build URL will be available after processing
+        };
 
-      setUploadedFiles(prev => [newFile, ...prev]);
-      setSuccess(`Successfully uploaded ${selectedFile.name}`);
-      setSelectedFile(null);
+        setUploadedFiles(prev => [newFile, ...prev]);
+        setSuccess(`Build queued successfully! Build ID: ${build.id}`);
+        setSelectedFile(null);
 
-      // Reset file input
-      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
+        // Reset file input
+        const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+      } else {
+        throw new Error('Invalid response format from server');
+      }
 
     } catch (error: any) {
       console.error('Upload failed:', error);
@@ -165,7 +193,7 @@ export default function WorkspacePage() {
           Welcome back, {user?.firstName || 'there'}!
         </h1>
         <p className="text-gray-300 text-lg">
-          Upload your website as a ZIP file to get started
+          Upload your website as a RAR file to start building
         </p>
       </div>
 
@@ -174,10 +202,10 @@ export default function WorkspacePage() {
         <CardHeader>
           <CardTitle className="text-white flex items-center">
             <CloudUpload className="w-5 h-5 mr-2" />
-            Upload Website
+            Upload & Build Website
           </CardTitle>
           <CardDescription className="text-gray-300">
-            Select a ZIP file containing your website files (HTML, CSS, JS, images, etc.)
+            Upload a RAR file containing your website files to start the build process
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -209,20 +237,20 @@ export default function WorkspacePage() {
               
               <div>
                 <p className="text-gray-300 text-lg">
-                  Drag and drop your ZIP file here, or{' '}
+                  Drag and drop your RAR file here, or{' '}
                   <label htmlFor="file-upload" className="text-blue-400 hover:text-blue-300 cursor-pointer underline">
                     browse
                   </label>
                 </p>
                 <p className="text-gray-500 text-sm mt-1">
-                  Maximum file size: 100MB
+                  No file size restrictions
                 </p>
               </div>
 
               <input
                 id="file-upload"
                 type="file"
-                accept=".zip"
+                accept=".rar"
                 onChange={handleFileSelect}
                 className="hidden"
                 disabled={isUploading}
@@ -286,7 +314,7 @@ export default function WorkspacePage() {
               ) : (
                 <>
                   <Upload className="w-4 h-4 mr-2" />
-                  Upload Website
+                  Upload & Build
                 </>
               )}
             </Button>
@@ -298,9 +326,9 @@ export default function WorkspacePage() {
       {uploadedFiles.length > 0 && (
         <Card className="border-gray-700 bg-gray-800">
           <CardHeader>
-            <CardTitle className="text-white">Upload History</CardTitle>
+            <CardTitle className="text-white">Build History</CardTitle>
             <CardDescription className="text-gray-300">
-              Your recently uploaded websites
+              Your recently uploaded and built websites
             </CardDescription>
           </CardHeader>
           <CardContent>
