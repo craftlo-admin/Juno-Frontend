@@ -357,8 +357,8 @@ export default function WorkspacePage() {
     if (!file) return;
 
     // Validate file type
-    if (!file.name.toLowerCase().endsWith('.rar')) {
-      setError('Please select a RAR file containing your website.');
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+      setError('Please select a ZIP file containing your website.');
       return;
     }
 
@@ -420,7 +420,7 @@ export default function WorkspacePage() {
         
         switch (response.status) {
           case 400:
-            errorMessage = errorData.message || 'Invalid file type. Only RAR files are allowed.';
+            errorMessage = errorData.message || 'Invalid file type. Only ZIP files are allowed.';
             break;
           case 401:
             errorMessage = errorData.message || 'Authentication required. Please log in again.';
@@ -508,7 +508,7 @@ export default function WorkspacePage() {
       return <Package className="w-5 h-5 text-blue-400" />;
     } else if (relativePath.includes('deployments/')) {
       return <Globe className="w-5 h-5 text-green-400" />;
-    } else if (contentType.includes('archive') || relativePath.endsWith('.rar') || relativePath.endsWith('.zip')) {
+    } else if (contentType.includes('archive') || relativePath.endsWith('.zip') || relativePath.endsWith('.rar')) {
       return <FileArchive className="w-5 h-5 text-orange-400" />;
     } else {
       return <File className="w-5 h-5 text-gray-400" />;
@@ -537,7 +537,7 @@ export default function WorkspacePage() {
           Welcome back, {user?.firstName || 'there'}!
         </h1>
         <p className="text-gray-300 text-lg">
-          Upload your website as a RAR file to start building
+          Upload your website as a ZIP file to start building
         </p>
       </div>
 
@@ -549,7 +549,7 @@ export default function WorkspacePage() {
             Upload & Build Website
           </CardTitle>
           <CardDescription className="text-gray-300">
-            Upload a RAR file containing your website files to start the build process
+            Upload a ZIP file containing your website files to start the build process
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -581,7 +581,7 @@ export default function WorkspacePage() {
               
               <div>
                 <p className="text-gray-300 text-lg">
-                  Drag and drop your RAR file here, or{' '}
+                  Drag and drop your ZIP file here, or{' '}
                   <label htmlFor="file-upload" className="text-blue-400 hover:text-blue-300 cursor-pointer underline">
                     browse
                   </label>
@@ -594,7 +594,7 @@ export default function WorkspacePage() {
               <input
                 id="file-upload"
                 type="file"
-                accept=".rar"
+                accept=".zip"
                 onChange={handleFileSelect}
                 className="hidden"
                 disabled={isUploading}
